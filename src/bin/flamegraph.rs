@@ -40,6 +40,7 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+
     opt.graph.check()?;
 
     let workload = if let Some(perf_file) = opt.perf_file {

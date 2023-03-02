@@ -175,6 +175,7 @@ mod arch {
 
         match workload {
             Workload::Command(c) => {
+                /*
                 let mut escaped = String::new();
                 for (i, arg) in c.iter().enumerate() {
                     if i > 0 {
@@ -182,9 +183,31 @@ mod arch {
                     }
                     escaped.push_str(&arg.replace(' ', "\\ "));
                 }
+                */
+                // build the subcommand
+                let subcom = c.first().expect("no sub-command to evaluate");
 
-                command.arg("-c");
-                command.arg(&escaped);
+                let mut subproc = Command::new(subcom);
+                if c.len() > 1 {
+                    subproc.args(&c[2..]);
+                }
+
+                #[cfg(target_family = "unix")]
+                {
+                    // try and drop privileges if flamegraph was called with sudo
+                    use std::os::unix::process::CommandExt;
+                    if !sudo {
+                        if let Ok(uid) = env::var("SUDO_UID").or(env::var("UID")) {
+                            if let Ok(id) = uid.parse::<u32>() {
+                                subproc.uid(id);
+                            }
+                        };
+                    }
+                }
+
+                let child = subproc.spawn().expect("unable to launch sub command");
+                command.arg("-p");
+                command.arg(child.id().to_string());
 
                 #[cfg(target_os = "windows")]
                 {
